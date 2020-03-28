@@ -11,10 +11,10 @@
 port: 8983
 
 # Number of solr instances to run
-replicaCount: 3
+replicaCount: 1
 
 # Settings for solr java memory
-javaMem: "-Xms2g -Xmx3g"
+javaMem: "-Xms250m -Xmx500m"
 
 # Set the limits and requests on solr pod resources
 resources: {}
@@ -29,7 +29,7 @@ terminationGracePeriodSeconds: 180
 # Solr image settings
 image:
   repository: solr
-  tag: 8.4.0
+  tag: 7.7.2
   pullPolicy: IfNotPresent
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
@@ -74,9 +74,9 @@ podDisruptionBudget:
 # Configuration for the solr PVC
 volumeClaimTemplates:
   storageClassName: ""
-  storageSize: "20Gi"
+  storageSize: "1Gi"
   accessModes:
-    - "ReadWriteOnce"
+    - "ReadWriteMany"
 
 # Configuration for solr TLS handling, see README.md for more instructions
 tls:

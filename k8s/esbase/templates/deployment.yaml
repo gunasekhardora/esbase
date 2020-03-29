@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "esbase.fullname" . }}
+  labels:
+    app: {{ template "esbase.name" . }}
+    chart: {{ template "esbase.chart" . }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "esbase.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "esbase.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "esbase.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: zookeeper-listener
+          image: alpine
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "for i in $(seq 1 200); do nc -zv -w5  solr-zookeeper-0 2181 && exit 0 || sleep 1; done; exit 1"]
+        - name: solr-listener
+          image: alpine
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "for i in $(seq 1 200); do nc -zv -w5  solr-0 8983 && exit 0 || sleep 1; done; exit 1"]
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/monitor
+              port: {{ .Values.service.targetPort }}
+          readinessProbe:
+            httpGet:
+              path: /api/monitor
+              port: {{ .Values.service.targetPort }}
+          env:
+            - name: ESBASE_PROPS
+              value: {{ printf "-Dsolr.base.url=%s" (include "solr.server" .) | quote }}
+          resources: {}
+      nodeSelector: {}
+      affinity: {}

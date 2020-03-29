@@ -14,3 +14,6 @@
 
 ### To monitor app locally
 - `curl "localhost:9090/api/monitor"`
+
+### Courtesy
+Charts for Solr and Zookeeper are taken from [Helm Hub.](https://github.com/helm/charts/tree/master/incubator)

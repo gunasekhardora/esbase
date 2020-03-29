@@ -1,18 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "esbase.fullname" . }}
+  name: {{ template "esbase.fullname" . }}
   labels:
-    {{- include "esbase.labels" . | nindent 4 }}
+    app: {{ template "esbase.name" . }}
+    chart: {{ template "esbase.chart" . }}
+    release: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "esbase.selectorLabels" . | nindent 6 }}
+      app: {{ template "esbase.name" . }}
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        {{- include "esbase.selectorLabels" . | nindent 8 }}
+        app: {{ template "esbase.name" . }}
+        release: {{ .Release.Name }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -21,35 +25,34 @@ spec:
       serviceAccountName: {{ include "esbase.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: zookeeper-listener
+          image: alpine
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "for i in $(seq 1 200); do nc -zv -w5  solr-zookeeper-0 2181 && exit 0 || sleep 1; done; exit 1"]
+        - name: solr-listener
+          image: alpine
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "for i in $(seq 1 200); do nc -zv -w5  solr-0 8983 && exit 0 || sleep 1; done; exit 1"]
       containers:
         - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
-              port: http
+              path: /api/monitor
+              port: {{ .Values.service.targetPort }}
           readinessProbe:
             httpGet:
-              path: /
-              port: http
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-    {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
+              path: /api/monitor
+              port: {{ .Values.service.targetPort }}
+          env:
+            - name: ESBASE_PROPS
+              value: {{ printf "-Dsolr.base.url=%s" (include "solr.server" .) | quote }}
+          resources: {}
+      nodeSelector: {}
+      affinity: {}

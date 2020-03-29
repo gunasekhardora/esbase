@@ -24,6 +24,26 @@ If release name contains chart name it will be used as a full name.
 {{- end -}}
 {{- end -}}
 
+{{- define "solr.server" }}
+{{- if .Values.solr.serverOverride -}}
+{{- .Values.solr.serverOverride }}
+{{- else if eq .Release.Namespace "default" -}}
+{{- printf "http://solr-0/solr" }}
+{{- else -}}
+{{- printf "http://solr-0-%s/solr" .Release.Namespace }}
+{{- end -}}
+{{- end -}}
+
+{{- define "zook.server" }}
+{{- if .Values.zook.serverOverride -}}
+{{- .Values.zook.serverOverride }}
+{{- else if eq .Release.Namespace "default" -}}
+{{- printf "solr-zookeeper-0:2181" }}
+{{- else -}}
+{{- printf "solr-zookeeper-0-%s:2181" .Release.Namespace }}
+{{- end -}}
+{{- end -}}
+
 {{/*
 Create chart name and version as used by the chart label.
 */}}
